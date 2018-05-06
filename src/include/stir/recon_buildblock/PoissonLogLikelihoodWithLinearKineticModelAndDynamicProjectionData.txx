@@ -64,6 +64,8 @@
 #include "stir/IO/write_to_file.h"
 #endif
 
+#include <boost/format.hpp>
+
 START_NAMESPACE_STIR
 
 template<typename TargetT>
@@ -226,7 +228,7 @@ post_processing()
   }
   // If there are some, but not all files, throw an error
   if (count > 0 && count < 3)
-      error("Only " + std::to_string(count) + " of 3 displacement field image filenames are present. Enter all or none.");
+      error(boost::format("Only %1% of 3 displacement field image filenames are present. Enter all or none.") % count);
   // If all are present
   else if (count == 3) {
       // vector of MultipleDataSetHeaders for x,y,z
@@ -454,7 +456,7 @@ set_up_before_sensitivity(shared_ptr<TargetT > const& target_sptr)
   for (int i=0; i<this->_normalisations_sptr.size(); i++) {
       if (is_null_ptr(this->_normalisations_sptr[i]))
         {
-          warning("Invalid normalisation object (" + std::to_string(i) + ")");
+          warning(boost::format("Invalid normalisation object (%1%)") % i);
           return Succeeded::no;
         }
   }
@@ -511,7 +513,7 @@ set_up_before_sensitivity(shared_ptr<TargetT > const& target_sptr)
         else
             this->_single_frame_obj_funcs[frame_num].set_projector_pair_sptr(this->_projector_pairs_sptr[frame_num-this->_patlak_plot_sptr->get_starting_frame()]);
 
-        info("Setting up frame " + std::to_string(frame_num-this->_patlak_plot_sptr->get_starting_frame()+1) + " of " + std::to_string(this->_patlak_plot_sptr->get_time_frame_definitions().get_num_frames()));
+        info(boost::format("Setting up frame %1% of %2%") % (frame_num-this->_patlak_plot_sptr->get_starting_frame()+1) % this->_patlak_plot_sptr->get_time_frame_definitions().get_num_frames());
 
         if(this->_single_frame_obj_funcs[frame_num].set_up(density_template_sptr) != Succeeded::yes)
           error("Single frame objective functions is not set correctly!");

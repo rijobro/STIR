@@ -25,6 +25,7 @@
 */
 
 #include "stir/MultipleDataSetHeader.h"
+#include <boost/format.hpp>
 
 START_NAMESPACE_STIR
 
@@ -65,7 +66,7 @@ post_processing()
     bool empty_filenames = false;
     for (int i=0; i<_num_data_sets; ++i) {
         if (_filenames[i] == "") {
-            warning("MultipleDataSetHeader: Data set[" + std::to_string(i) + "] is empty.");
+          warning(boost::format("MultipleDataSetHeader: Data set[%1%] is empty.") % i);
             empty_filenames = true;
         }
     }
