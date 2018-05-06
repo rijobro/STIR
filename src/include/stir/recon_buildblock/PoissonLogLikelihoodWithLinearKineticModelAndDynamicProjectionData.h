@@ -170,6 +170,14 @@ public  RegisteredParsingObject<PoissonLogLikelihoodWithLinearKineticModelAndDyn
   double _Zoffset;
 
   /********************************/
+  /// Forward displacement field image filenames
+  std::vector<std::string> _fwrd_disp_field_filenames;
+  /// Projector pairs (for when displacement field images are present)
+  std::vector<shared_ptr<ProjectorByBinPair> > _projector_pairs_sptr;
+  /// B spline order for motion correction
+  int _bspline_order;
+
+  /********************************/
   //! name of file in which additive projection data are stored
   std::string _additive_dyn_proj_data_filename;
  //! points to the additive projection data
@@ -177,6 +185,10 @@ public  RegisteredParsingObject<PoissonLogLikelihoodWithLinearKineticModelAndDyn
   shared_ptr<DynamicProjData> _additive_dyn_proj_data_sptr;
   /*! the normalisation or/and attenuation data */
   shared_ptr<BinNormalisation> _normalisation_sptr;
+  /*! Multiple normalisation and/or attenuation data */
+  std::vector<shared_ptr<BinNormalisation> > _normalisations_sptr;
+  //! Dynamic normalisation filenames
+  std::string _normalisations_filename;
   //! Stores the projectors that are used for the computations
   shared_ptr<ProjectorByBinPair> _projector_pair_ptr;
   //! signals whether to zero the data in the end planes of the projection data

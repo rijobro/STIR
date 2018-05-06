@@ -155,7 +155,6 @@ class GatedDiscretisedDensity
   Succeeded   
     write_to_files(const std::string& filename,const std::string& suffix) const;
 
-
  private:
   // warning: if adding any new members, you have to change the copy constructor as well.
   TimeGateDefinitions _time_gate_definitions;

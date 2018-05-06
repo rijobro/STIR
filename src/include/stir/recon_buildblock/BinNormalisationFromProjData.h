@@ -99,6 +99,12 @@ public:
   virtual void undo(RelatedViewgrams<float>& viewgrams,const double start_time, const double end_time) const;
 
   virtual float get_bin_efficiency(const Bin& bin,const double start_time, const double end_time) const;
+
+  virtual void set_proj_data_filename(const std::string &filename)
+  {
+      normalisation_projdata_filename = filename;
+      norm_proj_data_ptr = ProjData::read_from_file(normalisation_projdata_filename);
+  }
  
 private:
   shared_ptr<ProjData> norm_proj_data_ptr;

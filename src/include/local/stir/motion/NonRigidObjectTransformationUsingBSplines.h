@@ -55,12 +55,17 @@ public:
 
   NonRigidObjectTransformationUsingBSplines();
 
+  NonRigidObjectTransformationUsingBSplines(const std::string, const std::string, const std::string, int &bspline_order);
+
   //! Transform point 
   virtual
     BasicCoordinate<num_dimensions,elemT>
     transform_point(const BasicCoordinate<num_dimensions,elemT>& point) const;
 
   float jacobian(const BasicCoordinate<num_dimensions,elemT>& point) const;
+
+  /// Set deformation field (dimension=1,2,3 for x,y,z)
+  Succeeded set_deformation_field(const std::string &filename, const int &dimension);
 
   virtual void set_defaults();
   virtual void initialise_keymap();

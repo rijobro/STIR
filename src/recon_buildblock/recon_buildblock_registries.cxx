@@ -51,6 +51,7 @@
 #include "stir/recon_buildblock/ChainedBinNormalisation.h"
 #include "stir/recon_buildblock/BinNormalisationFromProjData.h"
 #include "stir/recon_buildblock/BinNormalisationFromAttenuationImage.h"
+//#include "stir/recon_buildblock/BinNormalisationFromDynamicProjData.h"
 
 #include "stir/modelling/ParametricDiscretisedDensity.h"
 #include "stir/DynamicDiscretisedDensity.h"
@@ -102,6 +103,7 @@ static TrivialBinNormalisation::RegisterIt dummy91;
 static ChainedBinNormalisation::RegisterIt dummy92;
 static BinNormalisationFromProjData::RegisterIt dummy93;
 static BinNormalisationFromAttenuationImage::RegisterIt dummy94;
+//static BinNormalisationFromDynamicProjData::RegisterIt dummy95;
 static PoissonLogLikelihoodWithLinearKineticModelAndDynamicProjectionData<ParametricVoxelsOnCartesianGrid>::RegisterIt Dummyxxx;
 static PoissonLogLikelihoodWithLinearModelForMeanAndGatedProjDataWithMotion<DiscretisedDensity<3,float> >::RegisterIt Dummyxxxzz;
 

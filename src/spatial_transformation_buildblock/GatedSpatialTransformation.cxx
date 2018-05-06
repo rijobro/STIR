@@ -101,7 +101,7 @@ post_processing()
 //! Implementation to read the transformation vectors will be moved to the IO directory because it should be general. For example it can be in ECAT7 image formant
 void
 GatedSpatialTransformation::read_from_files(const std::string input_string) 
-{ 
+{
   const std::string gate_defs_input_string=input_string + ".gdef";
 
   if (gate_defs_input_string.size()!=0)
@@ -112,16 +112,16 @@ GatedSpatialTransformation::read_from_files(const std::string input_string)
 
   const shared_ptr<GatedDiscretisedDensity> spatial_transformation_z_sptr (GatedDiscretisedDensity::read_from_files(input_string,"d1"));
   const GatedDiscretisedDensity & spatial_transformation_z(*spatial_transformation_z_sptr);
-	
+
   const shared_ptr<GatedDiscretisedDensity> spatial_transformation_y_sptr(GatedDiscretisedDensity::read_from_files(input_string,"d2"));
   const GatedDiscretisedDensity & spatial_transformation_y(*spatial_transformation_y_sptr);
-	
+
   const shared_ptr<GatedDiscretisedDensity> spatial_transformation_x_sptr (GatedDiscretisedDensity::read_from_files(input_string,"d3"));
   const GatedDiscretisedDensity & spatial_transformation_x(*spatial_transformation_x_sptr);
-	
+
   const TimeGateDefinitions gate_defs(gate_defs_input_string);//This is not necessary as the defs are necessary for all the files and it should be one file... Think how to do this.
-	
-  this->_spatial_transformation_z= spatial_transformation_z; this->_spatial_transformation_y= spatial_transformation_y; this->_spatial_transformation_x= spatial_transformation_x; 
+
+  this->_spatial_transformation_z= spatial_transformation_z; this->_spatial_transformation_y= spatial_transformation_y; this->_spatial_transformation_x= spatial_transformation_x;
   this->_spatial_transformations_are_stored=true;
 }     
 

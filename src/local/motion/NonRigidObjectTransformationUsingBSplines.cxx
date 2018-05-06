@@ -235,6 +235,7 @@ void
 NonRigidObjectTransformationUsingBSplines<num_dimensions,elemT>::
 set_defaults()
 {
+  this->deformation_field_sptr.reset(new DeformationFieldOnCartesianGrid<num_dimensions,elemT>);
   this->_bspline_type = BSpline::cubic;
   this->_origin = make_coordinate(0.F,0.F,0.F);
 }
@@ -245,7 +246,6 @@ void
 NonRigidObjectTransformationUsingBSplines<num_dimensions,elemT>::
 initialise_keymap()
 {
-  this->deformation_field_sptr.reset(new DeformationFieldOnCartesianGrid<num_dimensions,elemT>);
   this->parser.add_key("grid spacing", &this->_grid_spacing);
   this->parser.add_key("origin", &this->_origin);
   this->parser.add_key("deformation field", this->deformation_field_sptr.get());
@@ -301,7 +301,7 @@ post_processing()
 						  this->_deformation_field_from_file_z,
 						  this->_grid_spacing,
 						  this->_origin) 
-		  == Succeeded::no)
+          == Succeeded::no)
 		return true;
 	}
 
@@ -340,6 +340,34 @@ NonRigidObjectTransformationUsingBSplines()
   this->set_defaults();
 }
 
+template <int num_dimensions, class elemT>
+NonRigidObjectTransformationUsingBSplines<num_dimensions,elemT>::
+NonRigidObjectTransformationUsingBSplines(std::string filename_x, std::string filename_y, std::string filename_z, int &bspline_order)
+{
+    this->set_defaults();
+
+    // Get the origin and spacing from the x and assume it's the same for y and z
+    shared_ptr<DiscretisedDensity<3,float> > image_sptr(read_from_file<DiscretisedDensity<3,float> >(filename_x));
+
+    if (is_null_ptr(image_sptr))
+        warning("Error reading %s", filename_x.c_str());
+
+    VoxelsOnCartesianGrid<float> const * voxels_ptr = dynamic_cast<VoxelsOnCartesianGrid<float> const *>(image_sptr.get());
+
+    if (is_null_ptr(voxels_ptr))
+        warning("Error reading %s: should be of type VoxelsOnCartesianGrid", filename_x.c_str());
+
+    this->_origin       = image_sptr->get_origin();
+    this->_grid_spacing = voxels_ptr->get_grid_spacing();
+
+    this->_deformation_field_from_file_x = filename_x;
+    this->_deformation_field_from_file_y = filename_y;
+    this->_deformation_field_from_file_z = filename_z;
+
+    this->_bspline_order = bspline_order;
+
+    this->post_processing();
+}
 
 template <int num_dimensions, class elemT>
 BasicCoordinate<num_dimensions,elemT>

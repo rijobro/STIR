@@ -31,6 +31,7 @@
 #include "stir/modelling/ParametricDiscretisedDensity.h" 
 #include "stir/NumericType.h"
 #include "stir/Succeeded.h"
+#include "stir/IO/interfile.h"
 
 START_NAMESPACE_STIR
 
@@ -108,10 +109,14 @@ actual_write_to_file(std::string& filename,
 		     const ParametricDiscretisedDensity<DiscDensityT>& density) const
 {
   // TODO modify write_basic_interfile to return filename
-  
-  error("InterfileParametricDensityOutputFileFormat TODO");
-  return Succeeded::no;
-};
+  Succeeded success =
+      write_basic_interfile(filename, density,
+                this->type_of_numbers, this->scale_to_write_data,
+                this->file_byte_order);
+  if (success == Succeeded::yes)
+      replace_extension(filename, ".hv");
+  return success;
+}
 
 #undef ParamDiscDensity
 #undef TEMPLATE

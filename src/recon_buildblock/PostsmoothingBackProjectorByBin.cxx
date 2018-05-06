@@ -88,10 +88,11 @@ PostsmoothingBackProjectorByBin::
 set_up(const shared_ptr<ProjDataInfo>& proj_data_info_ptr,
        const shared_ptr<DiscretisedDensity<3,float> >& image_info_ptr)
 {
+  base_type::set_up(proj_data_info_ptr,image_info_ptr);
+
   original_back_projector_ptr->set_up(proj_data_info_ptr, image_info_ptr);
-  // don't do set_up as image sizes might change
-  //if (!is_null_ptr(image_processor_ptr))
-  //   image_processor_ptr->set_up(*image_info_ptr);
+  if (!is_null_ptr(image_processor_ptr))
+     image_processor_ptr->set_up(*image_info_ptr);
 }
 
 const DataSymmetriesForViewSegmentNumbers * 
@@ -101,10 +102,10 @@ get_symmetries_used() const
   return original_back_projector_ptr->get_symmetries_used();
 }
 
-void 
+void
 PostsmoothingBackProjectorByBin::
 actual_back_project(DiscretisedDensity<3,float>& density,
-                    const RelatedViewgrams<float>& viewgrams, 
+                    const RelatedViewgrams<float>& viewgrams,
                     const int min_axial_pos_num, const int max_axial_pos_num,
                     const int min_tangential_pos_num, const int max_tangential_pos_num)
 {
@@ -113,7 +114,7 @@ actual_back_project(DiscretisedDensity<3,float>& density,
       shared_ptr<DiscretisedDensity<3,float> > filtered_density_ptr
         (density.get_empty_discretised_density());
       assert(density.get_index_range() == filtered_density_ptr->get_index_range());
-      original_back_projector_ptr->back_project(*filtered_density_ptr, viewgrams, 
+      original_back_projector_ptr->back_project(*filtered_density_ptr, viewgrams,
                                                 min_axial_pos_num, max_axial_pos_num,
                                                 min_tangential_pos_num, max_tangential_pos_num);
       image_processor_ptr->apply(*filtered_density_ptr);
@@ -121,10 +122,31 @@ actual_back_project(DiscretisedDensity<3,float>& density,
     }
   else
     {
-      original_back_projector_ptr->back_project(density, viewgrams, 
+      original_back_projector_ptr->back_project(density, viewgrams,
                                                 min_axial_pos_num, max_axial_pos_num,
                                                 min_tangential_pos_num, max_tangential_pos_num);
     }
+}
+
+void
+PostsmoothingBackProjectorByBin::
+actual_back_project(const RelatedViewgrams<float>& viewgrams,
+                    const int min_axial_pos_num, const int max_axial_pos_num,
+                    const int min_tangential_pos_num, const int max_tangential_pos_num)
+{
+    std::cout <<"\nI'm here 56, which is good news!\n";
+      original_back_projector_ptr->back_project(*_density_sptr, viewgrams,
+                                                min_axial_pos_num, max_axial_pos_num,
+                                                min_tangential_pos_num, max_tangential_pos_num);
+}
+
+void
+PostsmoothingBackProjectorByBin::
+get_output(DiscretisedDensity<3,float> &density) const
+{
+    BackProjectorByBin::get_output(density);
+    if (!is_null_ptr(image_processor_ptr))
+        image_processor_ptr->apply(density);
 }
  
 

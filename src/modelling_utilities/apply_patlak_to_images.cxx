@@ -60,13 +60,16 @@ int main(int argc, char *argv[])
 { 
 USING_NAMESPACE_STIR
   PatlakPlot indirect_patlak;
-
-  if (argc==4)
+std::cout <<"\ni'm here0\n";
+std::cout <<"\nargc:" << argc << "\n";
+  if (argc>3)
     {
+      std::cout <<"\ni'm here1\n";
       if (indirect_patlak.parse(argv[3]) == false)
-	return EXIT_FAILURE;
+        return EXIT_FAILURE;
+      std::cout << "\n" << indirect_patlak.parameter_info() << "\n";
     }
-  if (argc!=3 && argc!=4)
+  if (argc!=3 && argc!=4 && argc!=5)
     {
       std::cerr << "Usage:" << argv[0] << " output_parametric_image input_dynamic_image [par_file] \n";
       return EXIT_FAILURE;
@@ -78,14 +81,21 @@ USING_NAMESPACE_STIR
   if (indirect_patlak.set_up()==Succeeded::no)
     return EXIT_FAILURE ;
   else
-    {  
-      shared_ptr<DynamicDiscretisedDensity> 
-	dyn_image_sptr(read_from_file<DynamicDiscretisedDensity>(argv[2]));
-      const DynamicDiscretisedDensity & dyn_image= *dyn_image_sptr;
+    {
+      DynamicDiscretisedDensity dyn_image;
+      if (argc != 5) {
+          shared_ptr<DynamicDiscretisedDensity> dyn_image_sptr(read_from_file<DynamicDiscretisedDensity>(argv[2]));
+          dyn_image= *dyn_image_sptr;
+      }
+      else
+          dyn_image.read_from_file_multi(argv[2], argv[4]);
 #if 1
+      std::cout << "\nabout to read the parametric image...\n";
       shared_ptr<ParametricVoxelsOnCartesianGrid> 
 	par_image_sptr(ParametricVoxelsOnCartesianGrid::read_from_file(argv[1]));
+      std::cout << "\ndone.\n";
       ParametricVoxelsOnCartesianGrid par_image = *par_image_sptr;
+
 #else
       ParametricVoxelsOnCartesianGrid par_image(dyn_image[1]);
 #endif

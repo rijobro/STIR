@@ -97,6 +97,12 @@ public:
       return get_back_projector_sptr()->get_symmetries_used();
     }
 
+  /// Set forward projector
+  void set_forward_projector(const shared_ptr<ForwardProjectorByBin> fwrd_proj_sptr) { forward_projector_sptr = fwrd_proj_sptr; }
+
+  /// Set backward projector
+  void set_backward_projector(const shared_ptr<BackProjectorByBin> back_proj_sptr) { back_projector_sptr = back_proj_sptr; }
+
 protected:
 
   shared_ptr<ForwardProjectorByBin> forward_projector_sptr;

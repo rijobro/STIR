@@ -1125,7 +1125,7 @@ namespace detail
 // TODO breaks with vectored keys (as there is no way of finding out if the
 // variable is actually a vector of the relevant type
 string KeyParser::parameter_info() const
-{  
+{
 #ifdef BOOST_NO_STRINGSTREAM
     // dangerous for out-of-range, but 'old-style' ostrstream seems to need this
     char str[100000];

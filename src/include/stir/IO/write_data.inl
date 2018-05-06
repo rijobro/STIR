@@ -249,7 +249,6 @@ write_data(OStreamT& s,
       return Succeeded::no;
       
     }
-
 }
 
 #undef ___BYTEORDER_DEFAULT

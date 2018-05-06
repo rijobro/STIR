@@ -89,6 +89,8 @@ PresmoothingForwardProjectorByBin::
 set_up(const shared_ptr<ProjDataInfo>& proj_data_info_ptr,
        const shared_ptr<DiscretisedDensity<3,float> >& image_info_ptr)
 {
+  base_type::set_up(proj_data_info_ptr,image_info_ptr);
+
   original_forward_projector_ptr->set_up(proj_data_info_ptr, image_info_ptr);
   if (!is_null_ptr(image_processor_ptr))
     image_processor_ptr->set_up(*image_info_ptr);
@@ -101,9 +103,9 @@ get_symmetries_used() const
   return original_forward_projector_ptr->get_symmetries_used();
 }
 
-void 
+void
 PresmoothingForwardProjectorByBin::
-actual_forward_project(RelatedViewgrams<float>& viewgrams, 
+actual_forward_project(RelatedViewgrams<float>& viewgrams,
                   const DiscretisedDensity<3,float>& density,
                   const int min_axial_pos_num, const int max_axial_pos_num,
                   const int min_tangential_pos_num, const int max_tangential_pos_num)
@@ -124,7 +126,30 @@ actual_forward_project(RelatedViewgrams<float>& viewgrams,
                                                       min_tangential_pos_num, max_tangential_pos_num);
     }
 }
- 
+
+
+void
+PresmoothingForwardProjectorByBin::
+actual_forward_project(RelatedViewgrams<float>& viewgrams,
+                  const int min_axial_pos_num, const int max_axial_pos_num,
+                  const int min_tangential_pos_num, const int max_tangential_pos_num)
+{
+    // No need to do the data processing since it was already done on set_input()
+    shared_ptr<DiscretisedDensity<3,float> > filtered_density_ptr(_density_sptr->get_empty_discretised_density());
+    assert(_density_sptr->get_index_range() == filtered_density_ptr->get_index_range());
+    original_forward_projector_ptr->forward_project(viewgrams, *filtered_density_ptr,
+                                                      min_axial_pos_num, max_axial_pos_num,
+                                                      min_tangential_pos_num, max_tangential_pos_num);
+}
+
+void
+PresmoothingForwardProjectorByBin::
+set_input(const shared_ptr<DiscretisedDensity<3,float> >& density_sptr)
+{
+    _density_sptr.reset(density_sptr->clone());
+    if (!is_null_ptr(image_processor_ptr))
+        image_processor_ptr->apply(*_density_sptr,*density_sptr);
+}
 
 
 END_NAMESPACE_STIR

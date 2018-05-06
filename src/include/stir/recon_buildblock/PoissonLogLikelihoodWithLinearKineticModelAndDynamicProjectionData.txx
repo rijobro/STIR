@@ -36,6 +36,9 @@
 #include "stir/Succeeded.h"
 #include "stir/recon_buildblock/ProjectorByBinPair.h"
 #include "stir/info.h"
+#include "stir/MultipleDataSetHeader.h"
+#include "stir/spatial_transformation/GatedSpatialTransformation.h"
+#include "stir/recon_buildblock/BinNormalisationFromProjData.h"
 
 // include the following to set defaults
 #ifndef USE_PMRT
@@ -47,6 +50,10 @@
 #include "stir/recon_buildblock/ProjMatrixByBinUsingRayTracing.h"
 #endif
 #include "stir/recon_buildblock/ProjectorByBinPairUsingSeparateProjectors.h"
+#include "stir/recon_buildblock/PresmoothingForwardProjectorByBin.h"
+#include "stir/recon_buildblock/PostsmoothingBackProjectorByBin.h"
+#include "local/stir/motion/Transform3DObjectImageProcessor.h"
+#include "local/stir/motion/NonRigidObjectTransformationUsingBSplines.h"
 
 #include <algorithm>
 #include <string> 
@@ -81,6 +88,13 @@ set_defaults()
 
   this->_additive_dyn_proj_data_filename = "0";
   this->_additive_dyn_proj_data_sptr.reset();
+
+  this->_normalisations_filename = "0";
+
+  for (int i=0; i<3; i++) {
+      this->_fwrd_disp_field_filenames.push_back("0");
+  }
+  this->_bspline_order = 3;
 
 #ifndef USE_PMRT // set default for _projector_pair_ptr
   shared_ptr<ForwardProjectorByBin> forward_projector_ptr(new ForwardProjectorByBinUsingRayTracing());
@@ -136,12 +150,16 @@ initialise_keymap()
 
   // normalisation (and attenuation correction)
   this->parser.add_parsing_key("Bin Normalisation type", &this->_normalisation_sptr);
+  this->parser.add_key("Dynamic bin normalisation filename", &this->_normalisations_filename);
 
   // Modelling Information
   this->parser.add_parsing_key("Kinetic Model Type", &this->_patlak_plot_sptr); // Do sth with dynamic_cast to get the PatlakPlot
 
-  // Regularization Information
-  //  this->parser.add_parsing_key("prior type", &this->_prior_sptr);
+  // Motion Information
+  this->parser.add_key("Forward displacement field image (x)", &this->_fwrd_disp_field_filenames[0]);
+  this->parser.add_key("Forward displacement field image (y)", &this->_fwrd_disp_field_filenames[1]);
+  this->parser.add_key("Forward displacement field image (z)", &this->_fwrd_disp_field_filenames[2]);
+  this->parser.add_key("BSpline order", &this->_bspline_order);
 }
 
 template<typename TargetT>
@@ -153,15 +171,16 @@ post_processing()
     return true;
   if (this->_input_filename.length() == 0)
     { warning("You need to specify an input filename"); return true; }
-  
+
 #if 0 // KT 20/06/2001 disabled as not functional yet
   if (num_views_to_add!=1 && (num_views_to_add<=0 || num_views_to_add%2 != 0))
     { warning("The 'mash x views' key has an invalid value (must be 1 or even number)"); return true; }
 #endif
- 
-  this->_dyn_proj_data_sptr.reset(DynamicProjData::read_from_file(_input_filename));
+
+  this->_dyn_proj_data_sptr = DynamicProjData::read_from_file(_input_filename);
   if (is_null_ptr(this->_dyn_proj_data_sptr))
     { warning("Error reading input file %s", _input_filename.c_str()); return true; }
+
   // image stuff
   if (this->_zoom <= 0)
     { warning("zoom should be positive"); return true; }
@@ -171,15 +190,98 @@ post_processing()
   if (this->_output_image_size_z!=-1 && this->_output_image_size_z<1) // KT 10122001 new
     { warning("output image size z must be positive (or -1 as default)"); return true; }
 
-
   if (this->_additive_dyn_proj_data_filename != "0")
     {
       info(boost::format("Reading additive projdata data %1%") % this->_additive_dyn_proj_data_filename);
-      this->_additive_dyn_proj_data_sptr.reset(DynamicProjData::read_from_file(this->_additive_dyn_proj_data_filename));
+      this->_additive_dyn_proj_data_sptr = DynamicProjData::read_from_file(this->_additive_dyn_proj_data_filename);
       if (is_null_ptr(this->_additive_dyn_proj_data_sptr))
 	{ warning("Error reading additive input file %s", _additive_dyn_proj_data_filename.c_str()); return true; }
 
     }
+
+  // If there are multiple bin normalisation sinograms
+  if (this->_normalisations_filename != "0") {
+      MultipleDataSetHeader header;
+      if (header.parse(_normalisations_filename.c_str()) == false)
+          error("PoissonLogLikelihoodWithLinearKineticModelAndDynamicProjectionData::post_processing Error parsing %s", _normalisations_filename.c_str());
+      _normalisations_sptr.resize(header.get_num_data_sets());
+      for (int i=0; i<header.get_num_data_sets(); i++) {
+          BinNormalisationFromProjData norm;
+          norm.set_proj_data_filename(header.get_filename(i));
+          _normalisations_sptr[i].reset(new BinNormalisationFromProjData(norm));
+      }
+      // Check there are as many binnormalisations as sinograms
+      if (_normalisations_sptr.size() != _dyn_proj_data_sptr->get_num_proj_data())
+          error("Mismatch in # sinograms and # normalisation sinograms.");
+  }
+
+  // ---------------------------------------------------------------------------------------- //
+  //                                    motion
+  // ---------------------------------------------------------------------------------------- //
+
+  // First, check that all 3 (x,y,z) motion filenames are present
+  int count = 0;
+  for (int i=0; i<3; i++) {
+      if (_fwrd_disp_field_filenames[i] != "0") ++count;
+  }
+  // If there are some, but not all files, throw an error
+  if (count > 0 && count < 3)
+      error("Only " + std::to_string(count) + " of 3 displacement field image filenames are present. Enter all or none.");
+  // If all are present
+  else if (count == 3) {
+      // vector of MultipleDataSetHeaders for x,y,z
+      std::vector<MultipleDataSetHeader> fwrd_disp_field_headers;
+      fwrd_disp_field_headers.resize(3);
+      for (int i=0; i<3; i++) {
+          // Read the filenames for each frame for each x,y,z
+          if (fwrd_disp_field_headers[i].parse(_fwrd_disp_field_filenames[i].c_str()) == false)
+              error("PoissonLogLikelihoodWithLinearKineticModelAndDynamicProjectionData::post_processing Error parsing %s", _fwrd_disp_field_filenames[i].c_str());
+
+          // Check there are as many motion fields as sinograms
+          if (fwrd_disp_field_headers[i].get_num_data_sets() != _dyn_proj_data_sptr->get_num_proj_data())
+              error("Mismatch in # sinograms and # forward displacement field images.");
+      }
+
+      // Create the projector pair for each frame
+      _projector_pairs_sptr.resize(fwrd_disp_field_headers[0].get_num_data_sets());
+      for (int i=0; i<_projector_pairs_sptr.size(); i++) {
+          // Create non rigid transformations
+          shared_ptr<NonRigidObjectTransformationUsingBSplines<3,float> > fwrd_non_rigid;
+          std::cout << "\nFrame: " << i+1 << ", Creating forward non-rigid transformation\n";
+          std::cout << "\tx: " << fwrd_disp_field_headers[0].get_filename(i) << "\n";
+          std::cout << "\ty: " << fwrd_disp_field_headers[1].get_filename(i) << "\n";
+          std::cout << "\tz: " << fwrd_disp_field_headers[2].get_filename(i) << "\n";
+          fwrd_non_rigid.reset(
+                      new NonRigidObjectTransformationUsingBSplines<3,float>(
+                          fwrd_disp_field_headers[0].get_filename(i),
+                          fwrd_disp_field_headers[1].get_filename(i),
+                          fwrd_disp_field_headers[2].get_filename(i),
+                          this->_bspline_order));
+          // Create image processors
+          shared_ptr<Transform3DObjectImageProcessor<float> > fwrd_transform, back_transform;
+          fwrd_transform.reset( new Transform3DObjectImageProcessor<float>(fwrd_non_rigid) );
+          back_transform.reset( new Transform3DObjectImageProcessor<float>(*fwrd_transform) );
+          back_transform->set_do_transpose(!fwrd_transform->get_do_transpose());
+
+          // Create projectors
+          shared_ptr<PresmoothingForwardProjectorByBin> fwrd_projector;
+          shared_ptr<PostsmoothingBackProjectorByBin>   back_projector;
+          fwrd_projector.reset(
+                      new PresmoothingForwardProjectorByBin(
+                          this->_projector_pair_ptr->get_forward_projector_sptr(),
+                          fwrd_transform));
+          back_projector.reset(
+                      new PostsmoothingBackProjectorByBin(
+                          this->_projector_pair_ptr->get_back_projector_sptr(),
+                          back_transform));
+          // Finally create the projector pair and store it in the vector
+          _projector_pairs_sptr[i].reset(
+                      new ProjectorByBinPairUsingSeparateProjectors(
+                          fwrd_projector,
+                          back_projector));
+      }
+  }
+
   return false;
 }
 
@@ -229,7 +331,7 @@ actual_subsets_are_approximately_balanced(std::string& warning_message) const
     error("Something strange happened in PoissonLogLikelihoodWithLinearKineticModelAndDynamicProjectionData:\n"
             "actual_subsets_are_approximately_balanced called before setup()?\n");
   return 
-    false;    
+    false;
 }
 
 /***************************************************************
@@ -349,14 +451,18 @@ set_up_before_sensitivity(shared_ptr<TargetT > const& target_sptr)
       return Succeeded::no;
     }
 
-  if (is_null_ptr(this->_normalisation_sptr))
-    {
-      warning("Invalid normalisation object");
-      return Succeeded::no;
-    }
+  for (int i=0; i<this->_normalisations_sptr.size(); i++) {
+      if (is_null_ptr(this->_normalisations_sptr[i]))
+        {
+          warning("Invalid normalisation object (" + std::to_string(i) + ")");
+          return Succeeded::no;
+        }
+  }
 
-  if (this->_normalisation_sptr->set_up(proj_data_info_sptr) == Succeeded::no)
-    return Succeeded::no;
+  for (int i=0; i<this->_normalisations_sptr.size(); i++) {
+      if (this->_normalisations_sptr[i]->set_up(proj_data_info_sptr) == Succeeded::no)
+        return Succeeded::no;
+  }
 
   if (this->_patlak_plot_sptr->set_up() == Succeeded::no)
     return Succeeded::no;
@@ -381,7 +487,6 @@ set_up_before_sensitivity(shared_ptr<TargetT > const& target_sptr)
    
     for(unsigned int frame_num=this->_patlak_plot_sptr->get_starting_frame();frame_num<=this->_patlak_plot_sptr->get_time_frame_definitions().get_num_frames();++frame_num)
       {
-        this->_single_frame_obj_funcs[frame_num].set_projector_pair_sptr(this->_projector_pair_ptr);
         this->_single_frame_obj_funcs[frame_num].set_proj_data_sptr(this->_dyn_proj_data_sptr->get_proj_data_sptr(frame_num));
         this->_single_frame_obj_funcs[frame_num].set_max_segment_num_to_process(this->_max_segment_num_to_process);
         this->_single_frame_obj_funcs[frame_num].set_zero_seg0_end_planes(this->_zero_seg0_end_planes!=0);
@@ -390,11 +495,27 @@ set_up_before_sensitivity(shared_ptr<TargetT > const& target_sptr)
         this->_single_frame_obj_funcs[frame_num].set_num_subsets(this->num_subsets);
         this->_single_frame_obj_funcs[frame_num].set_frame_num(frame_num);
         this->_single_frame_obj_funcs[frame_num].set_frame_definitions(this->_patlak_plot_sptr->get_time_frame_definitions());
-        this->_single_frame_obj_funcs[frame_num].set_normalisation_sptr(this->_normalisation_sptr);
         this->_single_frame_obj_funcs[frame_num].set_recompute_sensitivity(this->get_recompute_sensitivity());
         this->_single_frame_obj_funcs[frame_num].set_use_subset_sensitivities(this->get_use_subset_sensitivities());
+
+        // Set the BinNormalisation (if there's 1 set that, if there are multiple set the relevant one)
+        if (this->_normalisations_sptr.size() == 1)
+            this->_single_frame_obj_funcs[frame_num].set_normalisation_sptr(this->_normalisation_sptr);
+        else
+            this->_single_frame_obj_funcs[frame_num].set_normalisation_sptr(this->_normalisations_sptr[frame_num-this->_patlak_plot_sptr->get_starting_frame()]);
+
+        // If there is no motion, use the standard projector pair
+        if (_projector_pairs_sptr.size() == 0)
+            this->_single_frame_obj_funcs[frame_num].set_projector_pair_sptr(this->_projector_pair_ptr);
+        // If there is motion, add it to the projectors
+        else
+            this->_single_frame_obj_funcs[frame_num].set_projector_pair_sptr(this->_projector_pairs_sptr[frame_num-this->_patlak_plot_sptr->get_starting_frame()]);
+
+        info("Setting up frame " + std::to_string(frame_num-this->_patlak_plot_sptr->get_starting_frame()+1) + " of " + std::to_string(this->_patlak_plot_sptr->get_time_frame_definitions().get_num_frames()));
+
         if(this->_single_frame_obj_funcs[frame_num].set_up(density_template_sptr) != Succeeded::yes)
           error("Single frame objective functions is not set correctly!");
+
       }
   }//_single_frame_obj_funcs[frame_num]
 
@@ -449,7 +570,7 @@ compute_sub_gradient_without_penalty_plus_sensitivity(TargetT& gradient,
               dyn_image_estimate[frame_num].end_all(),
               1.F);
 
-  this->_patlak_plot_sptr->get_dynamic_image_from_parametric_image(dyn_image_estimate,current_estimate) ; 
+  this->_patlak_plot_sptr->get_dynamic_image_from_parametric_image(dyn_image_estimate,current_estimate) ;
  
   // loop over single_frame and use model_matrix
   for(unsigned int frame_num=this->_patlak_plot_sptr->get_starting_frame();frame_num<=this->_patlak_plot_sptr->get_time_frame_definitions().get_num_frames();++frame_num)
@@ -486,7 +607,7 @@ actual_compute_objective_function_without_penalty(const TargetT& current_estimat
     std::fill(dyn_image_estimate[frame_num].begin_all(),
               dyn_image_estimate[frame_num].end_all(),
               1.F);
-  this->_patlak_plot_sptr->get_dynamic_image_from_parametric_image(dyn_image_estimate,current_estimate) ; 
+  this->_patlak_plot_sptr->get_dynamic_image_from_parametric_image(dyn_image_estimate,current_estimate) ;
  
   // loop over single_frame
   for(unsigned int frame_num=this->_patlak_plot_sptr->get_starting_frame();

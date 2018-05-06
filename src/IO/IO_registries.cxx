@@ -33,6 +33,7 @@
 #include "stir/IO/InterfileOutputFileFormat.h"
 #include "stir/IO/ITKOutputFileFormat.h"
 #include "stir/IO/InterfileDynamicDiscretisedDensityOutputFileFormat.h"
+#include "stir/IO/InterfileDynamicDiscretisedDensityInputFileFormat.h"
 #include "stir/IO/InterfileParametricDensityOutputFileFormat.h"
 #ifdef HAVE_LLN_MATRIX
 #include "stir/IO/ECAT6OutputFileFormat.h"
@@ -74,6 +75,7 @@
 START_NAMESPACE_STIR
 
 static InterfileOutputFileFormat::RegisterIt dummy1;
+static InterfileDynamicDiscretisedDensityInputFileFormat::RegisterIt dummy060517;
 #ifdef HAVE_ITK
 static ITKOutputFileFormat::RegisterIt dummyITK1;
 #endif
