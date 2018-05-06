@@ -75,7 +75,6 @@
 START_NAMESPACE_STIR
 
 static InterfileOutputFileFormat::RegisterIt dummy1;
-static InterfileDynamicDiscretisedDensityInputFileFormat::RegisterIt dummy060517;
 #ifdef HAVE_ITK
 static ITKOutputFileFormat::RegisterIt dummyITK1;
 #endif
@@ -124,6 +123,8 @@ static RegisterInputFileFormat<ecat::ecat7::ECAT7DynamicDiscretisedDensityInputF
 // This is because we translate the ITK info currently incompletely.
 static RegisterInputFileFormat<ITKImageInputFileFormat> idummy8(10000);
 #endif
+static RegisterInputFileFormat<InterfileDynamicDiscretisedDensityInputFileFormat> dyndummy_intf(1);
+
 
 
 /*************************** listmode data **********************/

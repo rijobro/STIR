@@ -1,10 +1,11 @@
 //
 //
-#ifndef __stir_IO_InterfileInputFileFormat_h__
-#define __stir_IO_InterfileInputFileFormat_h__
+#ifndef __stir_IO_InterfileDynamicDiscretisedDensityInputFileFormat_h__
+#define __stir_IO_InterfileDynamicDiscretisedDensityInputFileFormat_h__
 /*
     Copyright (C) 2006 - 2007-10-08, Hammersmith Imanet Ltd
     Copyright (C) 2013-01-01 - 2013, Kris Thielemans
+    Copyight (C) 2018, University College London
     This file is part of STIR.
     This file is free software; you can redistribute it and/or modify
     it under the terms of the GNU Lesser General Public License as published by
@@ -21,7 +22,7 @@
 /*!
   \file
   \ingroup IO
-  \brief Declaration of class stir::InterfileInputFileFormat
+  \brief Declaration of class stir::InterfileDynamicDiscretisedDensityInputFileFormat
 
   \author Kris Thielemans
 
@@ -30,7 +31,6 @@
 #include "stir/IO/interfile.h"
 #include "stir/utilities.h"
 #include "stir/DynamicDiscretisedDensity.h"
-#include "stir/VoxelsOnCartesianGrid.h"
 #include "stir/error.h"
 #include "stir/is_null_ptr.h"
 
@@ -40,7 +40,7 @@ START_NAMESPACE_STIR
 /*! \ingroup IO
 
 */
-class InterfileImageInputFileFormat :
+class InterfileDynamicDiscretisedDensityInputFileFormat :
 public InputFileFormat<DynamicDiscretisedDensity>
 {
  public:
@@ -61,7 +61,8 @@ public InputFileFormat<DynamicDiscretisedDensity>
   virtual unique_ptr<data_type>
     read_from_file(std::istream& input) const
   {
-    unique_ptr<data_type> ret(read_interfile_image(input));
+    // needs more arguments, so we just give up (TODO?)
+    unique_ptr<data_type> ret;//(read_interfile_dynamic_image(input));
     if (is_null_ptr(ret))
       {
 	error("failed to read an Interfile image from stream");
@@ -71,7 +72,7 @@ public InputFileFormat<DynamicDiscretisedDensity>
   virtual unique_ptr<data_type>
     read_from_file(const std::string& filename) const
   {
-    unique_ptr<data_type> ret(read_interfile_image(filename));
+    unique_ptr<data_type> ret(read_interfile_dynamic_image(filename));
     if (is_null_ptr(ret))
       {
 	error("failed to read an Interfile image from file \"%s\"", filename.c_str());

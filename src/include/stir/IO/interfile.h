@@ -50,6 +50,7 @@ template <typename elemT> class CartesianCoordinate3D;
 template <typename elemT> class Coordinate3D;
 template <typename elemT> class VoxelsOnCartesianGrid;
 class ProjDataFromStream;
+class DynamicDiscretisedDensity;
 template <typename elemT> class ParametricDiscretisedDensity;
 template <typename elemT> class VoxelsOnCartesianGrid;
 template <int num_dimensions, typename elemT> class KineticParameters;
@@ -96,6 +97,12 @@ VoxelsOnCartesianGrid<float>* read_interfile_image(std::istream& input,
   This should normally never be used. Use read_from_file<DiscretisedDensity<3,float> >() instead.
 */
 VoxelsOnCartesianGrid<float>* read_interfile_image(const std::string& filename);
+
+DynamicDiscretisedDensity*
+read_interfile_dynamic_image(std::istream& input,
+                             const std::string&  directory_for_data);
+
+DynamicDiscretisedDensity* read_interfile_dynamic_image(const std::string& filename);
 
 //! This outputs an Interfile header for an image.
 /*!
